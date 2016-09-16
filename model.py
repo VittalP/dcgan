@@ -2,6 +2,8 @@ import os
 import time
 from glob import glob
 import tensorflow as tf
+import sys
+sys.path.append('/home/vittal/work/models/')
 
 from ops import *
 from utils import *
@@ -74,30 +76,44 @@ class DCGAN(object):
 
         self.z_sum = tf.histogram_summary("z", self.z)
 
-        self.G = self.generator(self.z)
+        self.G1, self.G2, self.G3, self.G = self.generator(self.z)
         self.D, self.D_logits = self.discriminator(self.images)
 
         self.sampler = self.sampler(self.z)
         self.D_, self.D_logits_ = self.discriminator(self.G, reuse=True)
+        self.D1_, self.D1_logits_ = self.discriminator(self.G1, reuse=True)
+        self.D2_, self.D2_logits_ = self.discriminator(self.G2, reuse=True)
+        self.D3_, self.D3_logits_ = self.discriminator(self.G3, reuse=True)
 
         self.d_sum = tf.histogram_summary("d", self.D)
         self.d__sum = tf.histogram_summary("d_", self.D_)
         self.G_sum = tf.image_summary("G", self.G)
+        self.G1_sum = tf.image_summary("G1", self.G1)
+        self.G2_sum = tf.image_summary("G2", self.G2)
+        self.G3_sum = tf.image_summary("G3", self.G3)
 
         self.d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits, tf.ones_like(self.D)))
         self.d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits_, tf.zeros_like(self.D_)))
         self.g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D_logits_, tf.ones_like(self.D_)))
+        self.g1_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D1_logits_, tf.zeros_like(self.D_)))
+        self.g2_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D2_logits_, tf.zeros_like(self.D_)))
+        self.g3_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(self.D3_logits_, tf.zeros_like(self.D_)))
 
         self.d_loss_real_sum = tf.scalar_summary("d_loss_real", self.d_loss_real)
         self.d_loss_fake_sum = tf.scalar_summary("d_loss_fake", self.d_loss_fake)
-                                                    
+
         self.d_loss = self.d_loss_real + self.d_loss_fake
+        self.g_comp_loss = self.g1_loss + self.g2_loss + self.g3_loss
+        self.g_loss_tot = self.g_loss + self.g_comp_loss
 
         self.g_loss_sum = tf.scalar_summary("g_loss", self.g_loss)
+        self.g_comp_loss_sum = tf.scalar_summary("g_comp_loss", self.g_comp_loss)
+        self.g_loss_tot_sum = tf.scalar_summary("g_loss_tot", self.g_loss_tot)
         self.d_loss_sum = tf.scalar_summary("d_loss", self.d_loss)
 
         t_vars = tf.trainable_variables()
-
+        for var in t_vars:
+            print var.name
         self.d_vars = [var for var in t_vars if 'd_' in var.name]
         self.g_vars = [var for var in t_vars if 'g_' in var.name]
 
@@ -111,12 +127,12 @@ class DCGAN(object):
         d_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1) \
                           .minimize(self.d_loss, var_list=self.d_vars)
         g_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1) \
-                          .minimize(self.g_loss, var_list=self.g_vars)
+                          .minimize(self.g_loss_tot, var_list=self.g_vars)
         tf.initialize_all_variables().run()
 
         self.saver = tf.train.Saver()
-        self.g_sum = tf.merge_summary([self.z_sum, self.d__sum, 
-            self.G_sum, self.d_loss_fake_sum, self.g_loss_sum])
+        self.g_sum = tf.merge_summary([self.z_sum, self.d__sum,
+            self.G_sum, self.G1_sum, self.G2_sum, self.G3_sum, self.alpha_sum1, self.alpha_sum2, self.alpha_sum3, self.d_loss_fake_sum, self.g_loss_sum, self.g_comp_loss_sum, self.g_loss_tot_sum])
         self.d_sum = tf.merge_summary([self.z_sum, self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
         self.writer = tf.train.SummaryWriter("./logs", self.sess.graph_def)
 
@@ -151,14 +167,15 @@ class DCGAN(object):
                 self.writer.add_summary(summary_str, counter)
 
                 # Update G network
-                _, summary_str = self.sess.run([g_optim, self.g_sum],
-                    feed_dict={ self.z: batch_z })
-                self.writer.add_summary(summary_str, counter)
+                #_, summary_str = self.sess.run([g_optim, self.g_sum],
+                #    feed_dict={ self.z: batch_z })
+                #self.writer.add_summary(summary_str, counter)
 
-                # Run g_optim twice to make sure that d_loss does not go to zero (different from paper)
-                _, summary_str = self.sess.run([g_optim, self.g_sum],
-                    feed_dict={ self.z: batch_z })
-                self.writer.add_summary(summary_str, counter)
+                for i in range(2):
+                    # Run g_optim twice to make sure that d_loss does not go to zero (different from paper)
+                    _, summary_str = self.sess.run([g_optim, self.g_sum],
+                        feed_dict={ self.z: batch_z })
+                    self.writer.add_summary(summary_str, counter)
 
                 errD_fake = self.d_loss_fake.eval({self.z: batch_z})
                 errD_real = self.d_loss_real.eval({self.images: batch_images})
@@ -174,8 +191,14 @@ class DCGAN(object):
                         [self.sampler, self.d_loss, self.g_loss],
                         feed_dict={self.z: sample_z, self.images: sample_images}
                     )
-                    save_images(samples, [8, 8],
-                                './samples/train_%s_%s.png' % (epoch, idx))
+                    save_images(samples[0], [8, 8],
+                                './samples/samples1/train_%s_%s.png' % (epoch, idx))
+                    save_images(samples[1], [8, 8],
+                                './samples/samples2/train_%s_%s.png' % (epoch, idx))
+                    save_images(samples[2], [8, 8],
+                                './samples/samples3/train_%s_%s.png' % (epoch, idx))
+                    save_images(samples[3], [8, 8],
+                                './samples/samples/train_%s_%s.png' % (epoch, idx))
                     print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
 
                 if np.mod(counter, 500) == 2:
@@ -217,22 +240,45 @@ class DCGAN(object):
             self.h0 = tf.reshape(self.z_, [-1, 4, 4, self.gf_dim * 8])
             h0 = tf.nn.relu(self.g_bn0(self.h0))
 
-            self.h1, self.h1_w, self.h1_b = deconv2d(h0, 
-                [self.batch_size, 8, 8, self.gf_dim*4], name='g_h1', with_w=True)
-            h1 = tf.nn.relu(self.g_bn1(self.h1))
+            def gen_branch(h0, scope='branch'):
+                with tf.variable_scope(scope):
+                    self.h1, self.h1_w, self.h1_b = deconv2d(h0,
+                        [self.batch_size, 8, 8, self.gf_dim*4], name='g_h1', with_w=True)
+                    h1 = tf.nn.relu(self.g_bn1(self.h1))
 
-            h2, self.h2_w, self.h2_b = deconv2d(h1,
-                [self.batch_size, 16, 16, self.gf_dim*2], name='g_h2', with_w=True)
-            h2 = tf.nn.relu(self.g_bn2(h2))
+                    h2, self.h2_w, self.h2_b = deconv2d(h1,
+                        [self.batch_size, 16, 16, self.gf_dim*2], name='g_h2', with_w=True)
+                    h2 = tf.nn.relu(self.g_bn2(h2))
 
-            h3, self.h3_w, self.h3_b = deconv2d(h2,
-                [self.batch_size, 32, 32, self.gf_dim*1], name='g_h3', with_w=True)
-            h3 = tf.nn.relu(self.g_bn3(h3))
+                    h3, self.h3_w, self.h3_b = deconv2d(h2,
+                        [self.batch_size, 32, 32, self.gf_dim*1], name='g_h3', with_w=True)
+                    h3 = tf.nn.relu(self.g_bn3(h3))
 
-            h4, self.h4_w, self.h4_b = deconv2d(h3,
-                [self.batch_size, 64, 64, 3], name='g_h4', with_w=True)
+                    h4, self.h4_w, self.h4_b = deconv2d(h3,
+                        [self.batch_size, 64, 64, 3], name='g_h4', with_w=True)
 
-            return tf.nn.tanh(h4)
+                    return h4
+
+            h4_1 = gen_branch(h0, scope='branch_1')
+            G1 = tf.nn.tanh(h4_1)
+
+            h4_2 = gen_branch(h0, scope='branch_2')
+            G2 = tf.nn.tanh(h4_2)
+
+            h4_3 = gen_branch(h0, scope='branch_3')
+            G3 = tf.nn.tanh(h4_3)
+
+            g_alphas = tf.nn.softmax(tf.get_variable("g_alphas", [1, 3], initializer=tf.random_normal_initializer(stddev=0.02)))
+            self.alpha_sum1 = tf.scalar_summary("alpha1", tf.reshape(tf.slice(g_alphas, [0,0], [1,1]), []))
+            self.alpha_sum2 = tf.scalar_summary("alpha2", tf.reshape(tf.slice(g_alphas, [0,1], [1,1]), []))
+            self.alpha_sum3 = tf.scalar_summary("alpha3", tf.reshape(tf.slice(g_alphas, [0,2], [1,1]), []))
+            G1_a = tf.mul(G1, tf.slice(g_alphas, [0,0], [1,1]))
+            G2_a = tf.mul(G2, tf.slice(g_alphas, [0,1], [1,1]))
+            G3_a = tf.mul(G3, tf.slice(g_alphas, [0,2], [1,1]))
+            G = tf.add(G1_a, tf.add(G2_a, G3_a))
+
+            #out = tf.add( tf.matmul(G1, tf.slice(alphas, [0,0], [1,1])), tf.matmul(G2, tf.slice(alphas, [0,1], [1,1])), tf.matmul(G3, tf.slice(alphas, [0,2], [1,1])) )
+            return G1, G2, G3, G
         else:
             yb = tf.reshape(y, [None, 1, 1, self.y_dim])
             z = tf.concat(1, [z, y])
@@ -258,18 +304,40 @@ class DCGAN(object):
                             [-1, 4, 4, self.gf_dim * 8])
             h0 = tf.nn.relu(self.g_bn0(h0, train=False))
 
-            h1 = deconv2d(h0, [self.batch_size, 8, 8, self.gf_dim*4], name='g_h1')
-            h1 = tf.nn.relu(self.g_bn1(h1, train=False))
+            def gen_branch(h0, scope):
+                with tf.variable_scope(scope):
+                    h1 = deconv2d(h0, [self.batch_size, 8, 8, self.gf_dim*4], name='g_h1')
+                    h1 = tf.nn.relu(self.g_bn1(h1, train=False))
 
-            h2 = deconv2d(h1, [self.batch_size, 16, 16, self.gf_dim*2], name='g_h2')
-            h2 = tf.nn.relu(self.g_bn2(h2, train=False))
+                    h2 = deconv2d(h1, [self.batch_size, 16, 16, self.gf_dim*2], name='g_h2')
+                    h2 = tf.nn.relu(self.g_bn2(h2, train=False))
 
-            h3 = deconv2d(h2, [self.batch_size, 32, 32, self.gf_dim*1], name='g_h3')
-            h3 = tf.nn.relu(self.g_bn3(h3, train=False))
+                    h3 = deconv2d(h2, [self.batch_size, 32, 32, self.gf_dim*1], name='g_h3')
+                    h3 = tf.nn.relu(self.g_bn3(h3, train=False))
 
-            h4 = deconv2d(h3, [self.batch_size, 64, 64, 3], name='g_h4')
+                    h4 = deconv2d(h3, [self.batch_size, 64, 64, 3], name='g_h4')
 
-            return tf.nn.tanh(h4)
+                    return h4
+
+            h4_1 = gen_branch(h0, scope='branch_1')
+            G1 = tf.nn.tanh(h4_1)
+
+            h4_2 = gen_branch(h0, scope='branch_2')
+            G2 = tf.nn.tanh(h4_2)
+
+            h4_3 = gen_branch(h0, scope='branch_3')
+            G3 = tf.nn.tanh(h4_3)
+
+            g_alphas = tf.nn.softmax( tf.get_variable("g_alphas", [1, 3], initializer=tf.random_normal_initializer(stddev=0.02)))
+
+            G1_a = tf.mul(G1, tf.slice(g_alphas, [0,0], [1,1]))
+            G2_a = tf.mul(G2, tf.slice(g_alphas, [0,1], [1,1]))
+            G3_a = tf.mul(G3, tf.slice(g_alphas, [0,2], [1,1]))
+            G = tf.add(G1_a, tf.add(G2_a, G3_a))
+
+            #out = tf.add( tf.matmul(G1, tf.slice(alphas, [0,0], [1,1])), tf.matmul(G2, tf.slice(alphas, [0,1], [1,1])), tf.matmul(G3, tf.slice(alphas, [0,2], [1,1])) )
+            return G1, G2, G3, G
+
         else:
             yb = tf.reshape(y, [None, 1, 1, self.y_dim])
             z = tf.concat(1, [z, y])
