@@ -20,7 +20,14 @@ def save_images(images, size, image_path):
     return imsave(inverse_transform(images), size, image_path)
 
 def imread(path):
-    return scipy.misc.imread(path).astype(np.float)
+    im = scipy.misc.imread(path).astype(np.float)
+    if len(im.shape) == 2:
+        im3 = np.zeros((im.shape[0], im.shape[1], 3 ))
+        im3[:,:,0] = im
+        im3[:,:,1] = im
+        im3[:,:,2] = im
+        im = im3
+    return im
 
 def merge_images(images, size):
     return inverse_transform(images)
@@ -43,6 +50,13 @@ def center_crop(x, crop_h, crop_w=None, resize_w=64):
     if crop_w is None:
         crop_w = crop_h
     h, w = x.shape[:2]
+    if h<w:
+        crop_x = h
+    else:
+        crop_x = w
+    crop_h = crop_x
+    crop_w = crop_x
+
     j = int(round((h - crop_h)/2.))
     i = int(round((w - crop_w)/2.))
     return scipy.misc.imresize(x[j:j+crop_h, i:i+crop_w],
@@ -51,7 +65,7 @@ def center_crop(x, crop_h, crop_w=None, resize_w=64):
 def transform(image, npx=64, is_crop=True):
     # npx : # of pixels width/height of image
     if is_crop:
-        cropped_image = center_crop(image, npx)
+        cropped_image = center_crop(image, npx, resize_w=128)
     else:
         cropped_image = image
     return np.array(cropped_image)/127.5 - 1.
@@ -93,8 +107,8 @@ def to_json(output_path, *layers):
 
                 lines += """
                     var layer_%s = {
-                        "layer_type": "fc", 
-                        "sy": 1, "sx": 1, 
+                        "layer_type": "fc",
+                        "sy": 1, "sx": 1,
                         "out_sx": 1, "out_sy": 1,
                         "stride": 1, "pad": 0,
                         "out_depth": %s, "in_depth": %s,
@@ -110,7 +124,7 @@ def to_json(output_path, *layers):
 
                 lines += """
                     var layer_%s = {
-                        "layer_type": "deconv", 
+                        "layer_type": "deconv",
                         "sy": 5, "sx": 5,
                         "out_sx": %s, "out_sy": %s,
                         "stride": 2, "pad": 1,
