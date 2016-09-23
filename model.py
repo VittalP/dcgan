@@ -14,7 +14,7 @@ class DCGAN(object):
                  batch_size=64, sample_size = 64, output_size=64,
                  y_dim=None, z_dim=100, gf_dim=64, df_dim=64,
                  gfc_dim=1024, dfc_dim=1024, c_dim=3, dataset_name='default',
-                 checkpoint_dir=None):
+                 checkpoint_dir=None, samples_dir=None, log_dir=None):
         """
 
         Args:
@@ -65,10 +65,10 @@ class DCGAN(object):
         self.dataset_name = dataset_name
         self.checkpoint_dir = checkpoint_dir
         self.log_dir = log_dir
-        if not os.path.isdiri(os.path.join('./logs', self.log_dir)):
+        if not os.path.isdir(os.path.join('./logs', self.log_dir)):
             os.makedirs(os.path.join('./logs', self.log_dir))
         self.samples_dir = samples_dir
-        if not os.path.isdiri(os.path.join('./samples', self.samples_dir)):
+        if not os.path.isdir(os.path.join('./samples', self.samples_dir)):
             os.makedirs(os.path.join('./samples', self.samples_dir))
         self.build_model()
 
@@ -168,7 +168,7 @@ class DCGAN(object):
             elif config.dataset == 'imagenet':
                 config.data_root = '/mnt/disk1/vittal/data/ILSVRC2015/Data/CLS-LOC/train/'
                 with open('./data/imagenet/train_shuffle.txt', 'r') as ff:
-                    data = ff.read()
+                    data = [path.strip().split(' ')[0] for path in ff.readlines()]
                     batch_idxs = min(len(data), config.train_size)
             else:
                 config.data_root = './'
@@ -181,7 +181,7 @@ class DCGAN(object):
                     batch_labels = data_y[idx*config.batch_size:(idx+1)*config.batch_size]
                 else:
                     batch_files = data[idx*config.batch_size:(idx+1)*config.batch_size]
-                    batch = [get_image(os.path.join(config.data_root, batch_file), self.image_size, is_crop=self.is_crop, resize_w=self.output_size, is_grayscale = self.is_grayscale) for batch_file.strip().split(' ')[0] in batch_files]
+                    batch = [get_image(os.path.join(config.data_root, batch_file), self.image_size, is_crop=self.is_crop, resize_w=self.output_size, is_grayscale = self.is_grayscale) for batch_file in batch_files]
                     if (self.is_grayscale):
                         batch_images = np.array(batch).astype(np.float32)[:, :, :, None]
                     else:
