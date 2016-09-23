@@ -126,7 +126,12 @@ class DCGAN(object):
         """Train DCGAN"""
         if config.dataset == 'mnist':
             data_X, data_y = self.load_mnist()
+        elif config.dataset == 'imagenet':
+            config.data_root = '/mnt/disk1/vittal/data/ILSVRC2015/Data/CLS-LOC/train/'
+            with open('./data/imagenet/train_shuffle.txt', 'r') as ff:
+                data = [path.strip().split(' ')[0] for path in ff.readlines()]
         else:
+            config.data_root = './'
             data = glob(os.path.join("./data", config.dataset, "*.jpg"))
         #np.random.shuffle(data)
 
@@ -148,7 +153,7 @@ class DCGAN(object):
             sample_labels = data_y[0:self.sample_size]
         else:
             sample_files = data[0:self.sample_size]
-            sample = [get_image(sample_file, self.image_size, is_crop=self.is_crop, resize_w=self.output_size, is_grayscale = self.is_grayscale) for sample_file in sample_files]
+            sample = [get_image(os.path.join(config.data_root,sample_file), self.image_size, is_crop=self.is_crop, resize_w=self.output_size, is_grayscale = self.is_grayscale) for sample_file in sample_files]
             if (self.is_grayscale):
                 sample_images = np.array(sample).astype(np.float32)[:, :, :, None]
             else:
@@ -246,7 +251,7 @@ class DCGAN(object):
                             feed_dict={self.z: sample_z, self.images: sample_images}
                         )
                     save_images(samples, [8, 8],
-                                './' + config.sample_dir +'/train_{:02d}_{:04d}.png'.format(epoch, idx))
+                                './samples/' + config.samples_dir +'/train_{:02d}_{:04d}.png'.format(epoch, idx))
                     print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
 
                 if np.mod(counter, 500) == 2:
