@@ -135,7 +135,7 @@ class DCGAN(object):
         self.d_sum = tf.merge_summary([self.z_sum, self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
         if not os.path.isdir(os.path.join('./logs', config.log_dir)):
             os.makdeirs(os.path.join('./logs', config.log_dir))
-        self.writer = tf.train.SummaryWriter("./logs" + config.log_dir, self.sess.graph)
+        self.writer = tf.train.SummaryWriter(os.path.join("./logs",config.log_dir), self.sess.graph)
 
         sample_z = np.random.uniform(-1, 1, size=(self.sample_size , self.z_dim))
 
