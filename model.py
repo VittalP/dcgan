@@ -133,6 +133,8 @@ class DCGAN(object):
         self.g_sum = tf.merge_summary([self.z_sum, self.d__sum,
             self.G_sum, self.d_loss_fake_sum, self.g_loss_sum])
         self.d_sum = tf.merge_summary([self.z_sum, self.d_sum, self.d_loss_real_sum, self.d_loss_sum])
+        if not os.path.isdir(os.path.join('./logs', config.log_dir)):
+            os.makdeirs(os.path.join('./logs', config.log_dir))
         self.writer = tf.train.SummaryWriter("./logs" + config.log_dir, self.sess.graph)
 
         sample_z = np.random.uniform(-1, 1, size=(self.sample_size , self.z_dim))
@@ -239,6 +241,8 @@ class DCGAN(object):
                             [self.sampler, self.d_loss, self.g_loss],
                             feed_dict={self.z: sample_z, self.images: sample_images}
                         )
+                    if not os.path.isdir(config.sample_dir):
+                        os.makedirs(config.sample_dir)
                     save_images(samples, [8, 8],
                                 './' + config.sample_dir +'/train_{:02d}_{:04d}.png'.format(epoch, idx))
                     print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
