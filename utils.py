@@ -22,12 +22,15 @@ def save_images(images, size, image_path):
 
 def imread(path, is_grayscale):
     im = scipy.misc.imread(path).astype(np.float)
-    if len(im.shape) == 2:
-        im3 = np.zeros((im.shape[0], im.shape[1], 3 ))
-        im3[:,:,0] = im
-        im3[:,:,1] = im
-        im3[:,:,2] = im
-        im = im3
+    if im.shape[-1] != 3:
+        if im.shape[-1] == 4: # some imagenet images have 4 channels (weird!)
+            im = im[:,:,:3]
+        elif len(im.shape) == 2: #grayscale images
+            im3 = np.zeros((im.shape[0], im.shape[1], 3 ))
+            im3[:,:,0] = im
+            im3[:,:,1] = im
+            im3[:,:,2] = im
+            im = im3
     return im
 
 def merge_images(images, size):
