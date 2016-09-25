@@ -31,7 +31,7 @@ class DCGAN(object):
         """
         self.sess = sess
         self.is_crop = is_crop
-        self.is_grayscale = (c_dim == 1)
+        self.is_grayscale = False
         self.batch_size = batch_size
         self.image_size = image_size
         self.sample_size = sample_size
@@ -174,7 +174,7 @@ class DCGAN(object):
                 config.data_root = '/mnt/disk1/vittal/data/ILSVRC2015/Data/CLS-LOC/train/'
                 with open('./data/imagenet/train_shuffle.txt', 'r') as ff:
                     data = [path.strip().split(' ')[0] for path in ff.readlines()]
-                    batch_idxs = min(len(data), config.train_size)
+                    batch_idxs = min(len(data), config.train_size) // config.batch_size
             else:
                 config.data_root = './'
                 data = glob(os.path.join("./data", config.dataset, "*.jpg"))
@@ -191,7 +191,6 @@ class DCGAN(object):
                         batch_images = np.array(batch).astype(np.float32)[:, :, :, None]
                     else:
                         batch_images = np.array(batch).astype(np.float32)
-
                 batch_z = np.random.uniform(-1, 1, [config.batch_size, self.z_dim]) \
                             .astype(np.float32)
 
