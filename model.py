@@ -31,7 +31,7 @@ class DCGAN(object):
         """
         self.sess = sess
         self.is_crop = is_crop
-        self.is_grayscale = False
+        self.is_grayscale = (c_dim == 1)
         self.batch_size = batch_size
         self.image_size = image_size
         self.sample_size = sample_size
