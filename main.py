@@ -30,8 +30,8 @@ def main(_):
 
     if not os.path.exists(FLAGS.checkpoint_dir):
         os.makedirs(FLAGS.checkpoint_dir)
-    if not os.path.exists(FLAGS.sample_dir):
-        os.makedirs(FLAGS.sample_dir)
+    if not os.path.exists(FLAGS.samples_dir):
+        os.makedirs(FLAGS.samples_dir)
 
     with tf.Session() as sess:
         if FLAGS.dataset == 'mnist':
