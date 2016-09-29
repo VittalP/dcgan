@@ -312,11 +312,11 @@ class DCGAN(object):
             h3 = tf.nn.relu(self.g_bn3(h3))
 
             h3_1 = tf.nn.relu(conv2d(h3, output_dim=128,
-                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_3_1"))
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_4_1"))
             h3_2 = tf.nn.relu(conv2d(h3_1, output_dim=128,
-                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_3_2"))
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_4_2"))
             h3_3 = tf.nn.relu(conv2d(h3_2, output_dim=128,
-                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_3_3"))
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_4_3"))
             h4, self.h4_w, self.h4_b = deconv2d(h3_3,
                 [self.batch_size, s, s, self.c_dim], name='g_h4', with_w=True)
 
