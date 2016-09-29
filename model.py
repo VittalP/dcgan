@@ -355,16 +355,45 @@ class DCGAN(object):
                             [-1, s16, s16, self.gf_dim * 8])
             h0 = tf.nn.relu(self.g_bn0(h0, train=False))
 
-            h1 = deconv2d(h0, [self.batch_size, s8, s8, self.gf_dim*4], name='g_h1')
-            h1 = tf.nn.relu(self.g_bn1(h1, train=False))
+            h0_1 = tf.nn.relu(conv2d(h0, output_dim=128,
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_1_1"))
+            h0_2 = tf.nn.relu(conv2d(h0_1, output_dim=128,
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_1_2"))
+            h0_3 = tf.nn.relu(conv2d(h0_2, output_dim=128,
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_1_3"))
+            self.h1, self.h1_w, self.h1_b = deconv2d(h0_3,
+                [self.batch_size, s8, s8, self.gf_dim*4], name='g_h1', with_w=True)
+            h1 = tf.nn.relu(self.g_bn1(self.h1))
 
-            h2 = deconv2d(h1, [self.batch_size, s4, s4, self.gf_dim*2], name='g_h2')
-            h2 = tf.nn.relu(self.g_bn2(h2, train=False))
+            h1_1 = tf.nn.relu(conv2d(h1, output_dim=128,
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_2_1"))
+            h1_2 = tf.nn.relu(conv2d(h1_1, output_dim=128,
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_2_2"))
+            h1_3 = tf.nn.relu(conv2d(h1_2, output_dim=128,
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_2_3"))
+            h2, self.h2_w, self.h2_b = deconv2d(h1_3,
+                [self.batch_size, s4, s4, self.gf_dim*2], name='g_h2', with_w=True)
+            h2 = tf.nn.relu(self.g_bn2(h2))
 
-            h3 = deconv2d(h2, [self.batch_size, s2, s2, self.gf_dim*1], name='g_h3')
-            h3 = tf.nn.relu(self.g_bn3(h3, train=False))
+            h2_1 = tf.nn.relu(conv2d(h2, output_dim=128,
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_3_1"))
+            h2_2 = tf.nn.relu(conv2d(h2_1, output_dim=128,
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_3_2"))
+            h2_3 = tf.nn.relu(conv2d(h2_2, output_dim=128,
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_3_3"))
+            h3, self.h3_w, self.h3_b = deconv2d(h2_3,
+                [self.batch_size, s2, s2, self.gf_dim*1], name='g_h3', with_w=True)
+            h3 = tf.nn.relu(self.g_bn3(h3))
 
-            h4 = deconv2d(h3, [self.batch_size, s, s, self.c_dim], name='g_h4')
+            h3_1 = tf.nn.relu(conv2d(h3, output_dim=128,
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_4_1"))
+            h3_2 = tf.nn.relu(conv2d(h3_1, output_dim=128,
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_4_2"))
+            h3_3 = tf.nn.relu(conv2d(h3_2, output_dim=128,
+                       k_h=3, k_w=3, d_h=1, d_w=1, stddev=0.02, name="conv2d_4_3"))
+            h4, self.h4_w, self.h4_b = deconv2d(h3_3,
+                [self.batch_size, s, s, self.c_dim], name='g_h4', with_w=True)
+
 
             return tf.nn.tanh(h4)
         else:
