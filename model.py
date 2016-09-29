@@ -74,7 +74,7 @@ class DCGAN(object):
                                     name='real_images')
         self.sample_images= tf.placeholder(tf.float32, [self.sample_size] + [self.output_size, self.output_size, self.c_dim],
                                         name='sample_images')
-        self.z = tf.placeholder(tf.float32, [None, self.z_dim],
+        self.z = tf.placeholder(tf.float32, [self.batch_size, self.z_dim],
                                 name='z')
 
         self.z_sum = tf.histogram_summary("z", self.z)
